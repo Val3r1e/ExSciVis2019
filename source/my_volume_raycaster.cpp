@@ -144,7 +144,7 @@ float       g_ref_coef = 12.0;
 //glm::vec3   g_background_color = glm::vec3(1.0f, 1.0f, 1.0f); //white
 glm::vec3   g_background_color = glm::vec3(0.08f, 0.08f, 0.08f);   //grey
 
-glm::ivec2  g_window_res = glm::ivec2(1600, 800);
+glm::ivec2  g_window_res = glm::ivec2(1000, 700);
 Window g_win(g_window_res);
 
 // Volume Rendering GLSL Program
