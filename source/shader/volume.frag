@@ -20,7 +20,7 @@ uniform sampler2D transfer_texture;
 uniform vec3    camera_location;
 uniform float   sampling_distance;
 uniform float   sampling_distance_ref;
-uniform float   iso_value;
+uniform float   iso_value; //Nummer 2
 uniform vec3    max_bounds;
 uniform ivec3   volume_dimensions;
 
@@ -64,6 +64,7 @@ void main()
         discard;
 
 #if TASK == 10
+
     vec4 max_val = vec4(0.0, 0.0, 0.0, 0.0);
     
     // the traversal loop,
@@ -97,20 +98,50 @@ void main()
     // the traversal loop,
     // termination when the sampling position is outside volume boundarys
     // another termination condition for early ray termination is added
+
+    // --- mit Farbe: ---
+    //vec4 ave_val = vec4(0.0, 0.0, 0.0, 0.0);
+
+    // --- mit Dichte: ---
+    float ave_val = 0.0f;
+
+    
+    int counter = 0;
     while (inside_volume)
-    {      
+    {
+        // im while-Loop Werte "sammeln" für average
+        // und mitzählen, wie oft die Schleife läuft, um später dadurch zu teilen
         // get sample
         float s = get_sample_data(sampling_pos);
 
-        // dummy code
-        dst = vec4(sampling_pos, 1.0);
-        
+        // ------- average direkt mit der Farbe berechnen ------
+        // apply the transfer functions to retrieve color and opacity
+        //vec4 color = texture(transfer_texture, vec2(s, s));
+
+        //ave_val.r += color.r;
+        //ave_val.g += color.g;
+        //ave_val.b += color.b;
+        //ave_val.a += color.a;
+
+        // ------- stattdessen mit der Dichte --------
+        ave_val += s;
+
         // increment the ray sampling position
         sampling_pos  += ray_increment;
 
         // update the loop termination condition
         inside_volume  = inside_volume_bounds(sampling_pos);
+        counter++;
     }
+        //hier dann den angesammelten wert durch den counter teilen
+        // --- mit direkter Farbe: ---
+        //dst = ave_val/counter;
+
+        // --- mit erst Dichte ---
+        float tmp = ave_val / counter;
+        //wie im Default die Farbe berechnen und zurück geben:
+        dst = texture(transfer_texture, vec2(tmp, tmp));
+
 #endif
     
 #if TASK == 12 || TASK == 13
