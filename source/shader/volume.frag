@@ -21,7 +21,6 @@ uniform vec3    camera_location;
 uniform float   sampling_distance;
 uniform float   sampling_distance_ref;
 uniform float   iso_value; // treshold für Nummer 2
-// Abstand : Teilen
 uniform vec3    max_bounds; //Größe des Volumens
 uniform ivec3   volume_dimensions; // wie viele einzelne Datenpunkte man in jeder Richtung hat
 
@@ -46,6 +45,23 @@ get_sample_data(vec3 in_sampling_pos)
     vec3 obj_to_tex = vec3(1.0) / max_bounds;
     return texture(volume_texture, in_sampling_pos * obj_to_tex).r;
 
+}
+
+//Task 2.1
+vec3
+get_gradient(vec3 pos){
+
+    vec3 distance = max_bounds/volume_dimensions;
+
+    //Funktion siehe letzte Folie
+    float dx = (get_sample_data (vec3(pos.x + distance.x, pos.y, pos.z))
+            - get_sample_data(vec3(pos.x - distance.x, pos.y, pos.z))) / 2;
+    float dy = (get_sample_data(vec3(pos.x , pos.y + distance.y, pos.z))
+            - get_sample_data(vec3(pos.x, pos.y - distance.y, pos.z))) / 2;
+    float dz = (get_sample_data(vec3(pos.x , pos.y, pos.z + distance.z))
+            - get_sample_data(vec3(pos.x, pos.y, pos.z - distance.z))) / 2;
+
+    return vec3(dx,dy,dz); // /2) + 0.5 um ihn auf RGB zu mappen. Gradient = [-1,1], RGB = [0,1]
 }
 
 void main()
@@ -169,6 +185,7 @@ void main()
                 }else{
                     now = mid;
                 }
+                sampling_pos = mid;
             }
 
 #endif //endif von Aufgabe 1.3
@@ -180,7 +197,13 @@ void main()
 #endif
 #endif
             // weiter mit 1.2 bzw 1.3
-            dst = vec4(light_diffuse_color, 1.0);
+            //"normale" Farben (grau)
+            //dst = vec4(light_diffuse_color, 1.0);
+
+            //um den Gradienten zu testen:
+            vec3 gradient = (get_gradient(sampling_pos)/2.0f) + 0.5f; //mappen, s.o.
+            dst =  vec4(gradient, 1.0f);
+
             break;
         }
 
