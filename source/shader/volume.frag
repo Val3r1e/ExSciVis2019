@@ -157,38 +157,32 @@ void main()
         if(s >= iso_value){
 
 
-
-
-
 #if TASK == 13 // Binary Search
-        vec3 prev = sampling_pos - ray_increment;
-        vec3 now = sampling_pos;
-        for(int i = 0; i < 64; i++){
-            vec3 mid = (prev + now)/2;
-            float smid = get_sample_data(mid);
-            if(smid < iso_value){
-                prev = mid;
-            }else{
-                now = mid;
+            // Unterschied sieht man erst später bei der Beleuchtung und ggf. beim Gradienten
+            vec3 prev = sampling_pos - ray_increment; //zurück zum letzten, bevor wir größer waren als der iso_value
+            vec3 now = sampling_pos; //wo ich jetzt bin
+            for(int i = 0; i < 64; i++){ //binary search
+                vec3 mid = (prev + now)/2;
+                float smid = get_sample_data(mid);
+                if(smid < iso_value){
+                    prev = mid;
+                }else{
+                    now = mid;
+                }
             }
-        }
-            
-
 
 #endif //endif von Aufgabe 1.3
+
 #if ENABLE_LIGHTNING == 1 // Add Shading
         IMPLEMENTLIGHT;
 #if ENABLE_SHADOWING == 1 // Add Shadows
         IMPLEMENTSHADOW;
 #endif
 #endif
+            // weiter mit 1.2 bzw 1.3
             dst = vec4(light_diffuse_color, 1.0);
             break;
-
-
         }
-        // dummy code
-        //dst = vec4(light_diffuse_color, 1.0);
 
         // increment the ray sampling position
         sampling_pos += ray_increment;
@@ -196,7 +190,9 @@ void main()
         // update the loop termination condition
         inside_volume = inside_volume_bounds(sampling_pos);
     }
+
 #endif  //endif von Aufgab 1.2
+
 
 #if TASK == 31
     // the traversal loop,
