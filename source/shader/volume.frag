@@ -169,7 +169,7 @@ void main()
     while (inside_volume)
     {
         // get sample
-        float s = get_sample_data(sampling_pos);
+        float s = get_sample_data(sampling_pos); //density value
         if(s >= iso_value){
 
             dst = vec4(light_diffuse_color, 1.0);
@@ -192,7 +192,7 @@ void main()
 #endif //endif von Aufgabe 1.3
 
 #if ENABLE_LIGHTNING == 1 // Add Shading
-        //IMPLEMENTLIGHT;
+
             vec3 gradient = get_gradient(sampling_pos);
             vec3 normale = gradient * (-1);
             vec3 lightvec = (light_position - sampling_pos);
@@ -204,10 +204,36 @@ void main()
             dst = vec4(I_p, 1.0);
 
 #if ENABLE_SHADOWING == 1 // Add Shadows
-        IMPLEMENTSHADOW;
+
+            vec3 stepwidth = normalize(light_position - sampling_pos) * sampling_distance;
+            //vec3 vec = (light_position - (sampling_pos + stepwidth));
+
+            float s1 = get_sample_data(sampling_pos + stepwidth); //density value
+            float s2 = get_sample_data(sampling_pos + 2*stepwidth);
+            if(s1 >= s2){
+                dst = vec4(0.0);
+            }else {
+                vec3 my_pos = sampling_pos + stepwidth;
+                while (inside_volume)
+                {
+                    // get sample
+                    float d = get_sample_data(my_pos);//density value
+                    if (d >= iso_value){
+
+                        dst = vec4(light_diffuse_color, 1.0);
+                        break;
+                    }
+
+                    // increment the ray sampling position
+                    my_pos += stepwidth;
+
+                    // update the loop termination condition
+                    inside_volume = inside_volume_bounds(my_pos);
+                }
+            }
 #endif
 #endif
-            
+
             //um den Gradienten zu testen:
 //            vec3 gradient = (get_gradient(sampling_pos)/2.0f) + 0.5f; //mappen, s.o.
 //            dst =  vec4(gradient, 1.0f);
