@@ -26,7 +26,7 @@ uniform ivec3   volume_dimensions; // wie viele einzelne Datenpunkte man in jede
 
 uniform vec3    light_position;
 uniform vec3    light_ambient_color;
-uniform vec3    light_diffuse_color;
+uniform vec3    light_diffuse_color; //i_d
 uniform vec3    light_specular_color;
 uniform float   light_ref_coef;
 
@@ -172,6 +172,7 @@ void main()
         float s = get_sample_data(sampling_pos);
         if(s >= iso_value){
 
+            dst = vec4(light_diffuse_color, 1.0);
 
 #if TASK == 13 // Binary Search
             // Unterschied sieht man erst später bei der Beleuchtung und ggf. beim Gradienten
@@ -191,18 +192,25 @@ void main()
 #endif //endif von Aufgabe 1.3
 
 #if ENABLE_LIGHTNING == 1 // Add Shading
-        IMPLEMENTLIGHT;
+        //IMPLEMENTLIGHT;
+            vec3 gradient = get_gradient(sampling_pos);
+            vec3 normale = gradient * (-1);
+            vec3 lightvec = (light_position - sampling_pos);
+            vec3 i_d = light_diffuse_color;
+            vec4 k_d = texture(transfer_texture, vec2(iso_value, iso_value));
+
+            //Phong-Shading:
+            vec3 I_p = k_d.xyz * max(dot(lightvec, normale), 0) * i_d;
+            dst = vec4(I_p, 1.0);
+
 #if ENABLE_SHADOWING == 1 // Add Shadows
         IMPLEMENTSHADOW;
 #endif
 #endif
-            // weiter mit 1.2 bzw 1.3
-            //"normale" Farben (grau)
-            //dst = vec4(light_diffuse_color, 1.0);
-
+            
             //um den Gradienten zu testen:
-            vec3 gradient = (get_gradient(sampling_pos)/2.0f) + 0.5f; //mappen, s.o.
-            dst =  vec4(gradient, 1.0f);
+//            vec3 gradient = (get_gradient(sampling_pos)/2.0f) + 0.5f; //mappen, s.o.
+//            dst =  vec4(gradient, 1.0f);
 
             break;
         }
