@@ -194,8 +194,8 @@ void main()
 #if ENABLE_LIGHTNING == 1 // Add Shading
 
             vec3 gradient = get_gradient(sampling_pos);
-            vec3 normale = gradient * (-1);
-            vec3 lightvec = (light_position - sampling_pos);
+            vec3 normale = normalize(gradient * (-1));
+            vec3 lightvec = normalize(light_position - sampling_pos);
             vec3 i_d = light_diffuse_color;
             vec4 k_d = texture(transfer_texture, vec2(iso_value, iso_value));
 
@@ -206,31 +206,30 @@ void main()
 #if ENABLE_SHADOWING == 1 // Add Shadows
 
             vec3 stepwidth = normalize(light_position - sampling_pos) * sampling_distance;
-            //vec3 vec = (light_position - (sampling_pos + stepwidth));
+            vec3 s_pos = sampling_pos;
 
-            float s1 = get_sample_data(sampling_pos + stepwidth); //density value
-            float s2 = get_sample_data(sampling_pos + 2*stepwidth);
-            if(s1 >= s2){
-                dst = vec4(0.0);
-            }else {
-                vec3 my_pos = sampling_pos + stepwidth;
-                while (inside_volume)
-                {
-                    // get sample
-                    float d = get_sample_data(my_pos);//density value
-                    if (d >= iso_value){
+            while(inside_volume){
 
-                        dst = vec4(light_diffuse_color, 1.0);
-                        break;
-                    }
+                // zuerst ein Stück vom jetzigen Standpunkt wegbewegen, um nicht die gleiche Oberfläche zu treffen (beim 1. Mal)
+                // danach stimmts aber trotzdem noch, weil erst am Ende incremented wird
+                float s1 = get_sample_data(s_pos + stepwidth);
+                //dann den nächsten Punkt zum Vergleichen der Dichte suchen
+                float s2 = get_sample_data(s_pos + 2*stepwidth);
 
-                    // increment the ray sampling position
-                    my_pos += stepwidth;
-
-                    // update the loop termination condition
-                    inside_volume = inside_volume_bounds(my_pos);
+                // wenn die jetzige Dichte kleiner als der iso-value ist, die des nächsten Schritts aber größer,
+                // muss was dazwischen liegen (Punkt liegt also im Schatten), und andersherum genauso :
+                if((s1 < iso_value && s2 > iso_value) || (s1 > iso_value && s2 < iso_value)){
+                    dst = vec4(vec3(0.0), 1.0);
+                    break;
                 }
+
+                // increment the ray sampling position
+                s_pos += stepwidth;
+
+                // update the loop termination condition
+                inside_volume = inside_volume_bounds(s_pos);
             }
+
 #endif
 #endif
 
