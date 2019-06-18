@@ -64,6 +64,9 @@ get_gradient(vec3 pos){
     return vec3(dx,dy,dz); // /2) + 0.5 um ihn auf RGB zu mappen. Gradient = [-1,1], RGB = [0,1]
 }
 
+//Funktion für Phong-Shading schreiben
+
+
 void main()
 {
     /// One step trough the volume
@@ -254,23 +257,48 @@ void main()
     // the traversal loop,
     // termination when the sampling position is outside volume boundarys
     // another termination condition for early ray termination is added
-    while (inside_volume)
-    {
+
+    // transparency auf 1 setzen, damit später abgezogen werden kann
+    float transparency = 1.0f;
+
+    float s = get_sample_data(sampling_pos); //Dichte
+    // apply the transfer functions to retrieve color and opacity
+    vec4 color = texture(transfer_texture, vec2(s, s));
+    float opacity = color.a;
+    vec3 intensity0 = color.rgb * color.a;
+
+    sampling_pos += ray_increment;
+
+    while (inside_volume) {
+
+
         // get sample
 #if ENABLE_OPACITY_CORRECTION == 1 // Opacity Correction
-        IMPLEMENT;
+//        IMPLEMENT;
 #else
-        float s = get_sample_data(sampling_pos);
+        s = get_sample_data(sampling_pos); //Dichte
 #endif
-        // dummy code
-        dst = vec4(light_specular_color, 1.0);
+         // apply the transfer functions to retrieve color and opacity
+        color = texture(transfer_texture, vec2(s, s)); //Farbe??
+
+        //intensity ist die beleuchtete Farbe
+
+#if ENABLE_LIGHTNING == 1 // Add Shading
+        // hier die Phong-Shading Funktion aufrufen
+#endif
+
+        vec3 intensity = color.rgb * opacity;
+
+        // Formel aus den Vorlesungsfolien:
+        transparency *= (1 - opacity);
+        intensity0 += (intensity * transparency);
+
+        opacity = color.a;
+
+        dst = vec4(intensity0, 1.0);
 
         // increment the ray sampling position
         sampling_pos += ray_increment;
-
-#if ENABLE_LIGHTNING == 1 // Add Shading
-        IMPLEMENT;
-#endif
 
         // update the loop termination condition
         inside_volume = inside_volume_bounds(sampling_pos);
