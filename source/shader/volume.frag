@@ -288,19 +288,20 @@ void main()
     float opacity0 = color.a;
 
     #if ENABLE_OPACITY_CORRECTION == 1 // Opacity Correction
+        // Folien: Advanced Rendering Techniques, S. 43
         float d = sampling_distance / sampling_distance_ref;
-        opacity0 = 1 - pow((1 - opacity0), d*255);
+        opacity0 = 1 - pow((1 - opacity0), d*255); //* 255 wg. rgb, ist sonst viel zu dunkel!
     #endif
 
-    vec3 intensity0 = color.rgb * opacity0;
+    // korrigierte opacity, um die intensity zu bestimmen
+    vec3 intensityOut = color.rgb * opacity0;
 
     #if ENABLE_LIGHTNING == 1
-        intensity0 = phong_shading(sampling_pos, intensity0);
+        intensityOut = phong_shading(sampling_pos, intensityOut);
     #endif
 
-    vec3 outIntensity = intensity0;
     sampling_pos += ray_increment;
-    
+
 
     while (inside_volume) {
 
@@ -309,10 +310,12 @@ void main()
 
 #if ENABLE_OPACITY_CORRECTION == 1 // Opacity Correction
         float d = sampling_distance / sampling_distance_ref;
-        opacity = 1 - pow((1 - opacity), d * 255);
+        // Folien: Advanced Rendering Techniques, S. 43
+        opacity = 1 - pow((1 - opacity), d*255); //* 255 wg. rgb, ist sonst viel zu dunkel!
 #else
 
 #endif
+        // korrigierte opacity, um die intensity zu bestimmen
         vec3 intensity = color.rgb * opacity;
 
         //intensity ist die beleuchtete Farbe:
@@ -320,13 +323,15 @@ void main()
         intensity = phong_shading(sampling_pos, intensity);
 #endif
 
-        // Formel aus den Vorlesungsfolien:
+        // Formel aus den Vorlesungsfolien (Direct Volume Rendering, S. 51)
+        // "alte" opacity, um transparency zu bestimmen:
         transparency *= (1 - opacity0);
-        outIntensity += (intensity * transparency);
+        intensityOut += (intensity * transparency);
 
+        // opacity um eins weiter schieben
         opacity0 = opacity;
 
-        dst = vec4(outIntensity, 1.0);
+        dst = vec4(intensityOut, 1.0);
 
         // increment the ray sampling position
         sampling_pos += ray_increment;
