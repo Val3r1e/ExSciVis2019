@@ -19,7 +19,7 @@ uniform sampler2D transfer_texture;
 
 uniform vec3    camera_location;
 uniform float   sampling_distance;
-uniform float   sampling_distance_ref;
+uniform float   sampling_distance_ref; //für opacity Nummer 3?
 uniform float   iso_value; // treshold für Nummer 2
 uniform vec3    max_bounds; //Größe des Volumens
 uniform ivec3   volume_dimensions; // wie viele einzelne Datenpunkte man in jeder Richtung hat
@@ -76,6 +76,16 @@ vec3 phong_shading(vec3 sampling_position, vec3 i_d){
     vec3 I_p = k_d.xyz * max(dot(lightvec, normale), 0) * i_d;
 
     return I_p;
+}
+
+vec4 get_color(vec3 sampling_position){
+
+    //compute intensity at sampling position:
+
+    float s = get_sample_data(sampling_position); //Dichte
+    // apply the transfer functions to retrieve color and opacity
+    return texture(transfer_texture, vec2(s,s));
+
 }
 
 
@@ -274,48 +284,47 @@ void main()
 
     // transparency auf 1 setzen, damit später abgezogen werden kann
     float transparency = 1.0f;
+    vec4 color = get_color(sampling_pos);
+    float opacity0 = color.a;
 
-    float s = get_sample_data(sampling_pos); //Dichte
-    // apply the transfer functions to retrieve color and opacity
-    vec4 color = texture(transfer_texture, vec2(s, s));
-    float opacity = color.a;
-    vec3 intensity0 = color.rgb * color.a;
-    vec3 outIntensity = vec3(0.0);
+    #if ENABLE_OPACITY_CORRECTION == 1 // Opacity Correction
+        float d = sampling_distance / sampling_distance_ref;
+        opacity0 = 1 - pow((1 - opacity0), d*255);
+    #endif
 
+    vec3 intensity0 = color.rgb * opacity0;
+
+    #if ENABLE_LIGHTNING == 1
+        intensity0 = phong_shading(sampling_pos, intensity0);
+    #endif
+
+    vec3 outIntensity = intensity0;
     sampling_pos += ray_increment;
+    
 
     while (inside_volume) {
 
+        color = get_color(sampling_pos);
+        float opacity = color.a;
 
-        // get sample
 #if ENABLE_OPACITY_CORRECTION == 1 // Opacity Correction
-//        IMPLEMENT;
+        float d = sampling_distance / sampling_distance_ref;
+        opacity = 1 - pow((1 - opacity), d * 255);
 #else
-        s = get_sample_data(sampling_pos); //Dichte
-#endif
-         // apply the transfer functions to retrieve color and opacity
-        color = texture(transfer_texture, vec2(s, s)); //Farbe??
 
-        //intensity ist die beleuchtete Farbe
+#endif
         vec3 intensity = color.rgb * opacity;
 
+        //intensity ist die beleuchtete Farbe:
 #if ENABLE_LIGHTNING == 1 // Add Shading
-
         intensity = phong_shading(sampling_pos, intensity);
-
-        //only the first time!
-        if(intensity0 != vec3(0.0)){
-            intensity0 = phong_shading(sampling_pos, intensity0);
-        }
-
 #endif
 
         // Formel aus den Vorlesungsfolien:
-        transparency *= (1 - opacity);
-        outIntensity += intensity0 + (intensity * transparency);
-        intensity0 = vec3(0.0);
+        transparency *= (1 - opacity0);
+        outIntensity += (intensity * transparency);
 
-        opacity = color.a;
+        opacity0 = opacity;
 
         dst = vec4(outIntensity, 1.0);
 
