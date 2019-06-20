@@ -39,17 +39,14 @@ inside_volume_bounds(const in vec3 sampling_position)
 }
 
 
-float
-get_sample_data(vec3 in_sampling_pos)
-{
+float get_sample_data(vec3 in_sampling_pos){
     vec3 obj_to_tex = vec3(1.0) / max_bounds;
     return texture(volume_texture, in_sampling_pos * obj_to_tex).r;
 
 }
 
 //Task 2.1
-vec3
-get_gradient(vec3 pos){
+vec3 get_gradient(vec3 pos){
 
     vec3 distance = max_bounds/volume_dimensions;
 
@@ -64,7 +61,22 @@ get_gradient(vec3 pos){
     return vec3(dx,dy,dz); // /2) + 0.5 um ihn auf RGB zu mappen. Gradient = [-1,1], RGB = [0,1]
 }
 
+
 //Funktion für Phong-Shading schreiben
+vec3 phong_shading(vec3 sampling_position, vec3 i_d){
+
+    // compute components:
+    vec3 gradient = get_gradient(sampling_position);
+    vec3 normale = normalize(gradient * (-1));
+    vec3 lightvec = normalize(light_position - sampling_position);
+    //vec3 i_d = light_diffuse_color;
+    vec4 k_d = texture(transfer_texture, vec2(iso_value, iso_value));
+
+    // Phong-Shading:
+    vec3 I_p = k_d.xyz * max(dot(lightvec, normale), 0) * i_d;
+
+    return I_p;
+}
 
 
 void main()
@@ -196,14 +208,16 @@ void main()
 
 #if ENABLE_LIGHTNING == 1 // Add Shading
 
-            vec3 gradient = get_gradient(sampling_pos);
-            vec3 normale = normalize(gradient * (-1));
-            vec3 lightvec = normalize(light_position - sampling_pos);
-            vec3 i_d = light_diffuse_color;
-            vec4 k_d = texture(transfer_texture, vec2(iso_value, iso_value));
+//            vec3 gradient = get_gradient(sampling_pos);
+//            vec3 normale = normalize(gradient * (-1));
+//            vec3 lightvec = normalize(light_position - sampling_pos);
+//            vec3 i_d = light_diffuse_color;
+//            vec4 k_d = texture(transfer_texture, vec2(iso_value, iso_value));
+//
+//            //Phong-Shading:
+//            vec3 I_p = k_d.xyz * max(dot(lightvec, normale), 0) * i_d;
 
-            //Phong-Shading:
-            vec3 I_p = k_d.xyz * max(dot(lightvec, normale), 0) * i_d;
+            vec3 I_p = phong_shading(sampling_pos, light_diffuse_color);
             dst = vec4(I_p, 1.0);
 
 #if ENABLE_SHADOWING == 1 // Add Shadows
@@ -266,6 +280,7 @@ void main()
     vec4 color = texture(transfer_texture, vec2(s, s));
     float opacity = color.a;
     vec3 intensity0 = color.rgb * color.a;
+    vec3 outIntensity = vec3(0.0);
 
     sampling_pos += ray_increment;
 
@@ -282,20 +297,27 @@ void main()
         color = texture(transfer_texture, vec2(s, s)); //Farbe??
 
         //intensity ist die beleuchtete Farbe
+        vec3 intensity = color.rgb * opacity;
 
 #if ENABLE_LIGHTNING == 1 // Add Shading
-        // hier die Phong-Shading Funktion aufrufen
-#endif
 
-        vec3 intensity = color.rgb * opacity;
+        intensity = phong_shading(sampling_pos, intensity);
+
+        //only the first time!
+        if(intensity0 != vec3(0.0)){
+            intensity0 = phong_shading(sampling_pos, intensity0);
+        }
+
+#endif
 
         // Formel aus den Vorlesungsfolien:
         transparency *= (1 - opacity);
-        intensity0 += (intensity * transparency);
+        outIntensity += intensity0 + (intensity * transparency);
+        intensity0 = vec3(0.0);
 
         opacity = color.a;
 
-        dst = vec4(intensity0, 1.0);
+        dst = vec4(outIntensity, 1.0);
 
         // increment the ray sampling position
         sampling_pos += ray_increment;
